@@ -36,7 +36,6 @@
   </div>
   </div>
 
-
   <div class="row">
   <!-- Number of Guests / Adults -->
   <div class="mb-3 col-md-6">
@@ -51,7 +50,6 @@
   </div>
   </div>
 
-
   <!-- Room Type -->
   <div class="form-group mb-3 mt-3">
     <label for="roomType" >Room Type</label>
@@ -62,9 +60,68 @@
     </select>
   </div>
 
-  <!-- Submit Button -->
+  <!-- Pay Button -->
    <div class="form-group mb-3">
-  <button type="submit" class="btn-pay">Pay Now</button>
+  <button type="button" id="rzp-button" class="btn-pay">Pay Now</button>
   </div>
 </form>
-</div>
+</div>  
+
+<!-- Razorpay script (must include before your JS) -->
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<script>
+  // Get today’s date in YYYY-MM-DD format
+  const today = new Date().toISOString().split("T")[0];
+  document.getElementById("checkIn").setAttribute("min", today);
+  document.getElementById("checkOut").setAttribute("min", today);
+
+  document.getElementById("checkIn").addEventListener("change", function() {
+    document.getElementById("checkOut").setAttribute("min", this.value);
+  });
+
+  document.getElementById("rzp-button").onclick = async function(e){
+    e.preventDefault();
+
+    // 1. Call backend to create order
+    const response = await fetch("/create-order", { method: "POST" });
+    const order = await response.json();
+
+    // 2. Razorpay options with UPI enabled
+    const options = {
+    key: "rzp_test_RQ9mV3BcbaRgW2",
+    amount: order.amount,
+    currency: "INR",
+    name: "Hotel Booking",
+    description: "Room Reservation Payment",
+    order_id: order.id,
+    handler: function (response){
+        alert("✅ Payment successful! Payment ID: " + response.razorpay_payment_id);
+        window.location.href = "/listings";
+    },
+    prefill: {
+        name: document.getElementById("guestName").value,
+        email: document.getElementById("guestEmail").value,
+        contact: document.getElementById("guestPhone").value
+    },
+    theme: { color: "#3399cc" },
+    // Force enable UPI
+    modal: {
+        escape: true,
+        backdropclose: false,
+    },
+    method: {
+        netbanking: true,
+        card: true,
+        upi: true,        // ✅ enable UPI
+        wallet: true,
+        emi: true,
+    }
+};
+
+
+    // 3. Open Razorpay Checkout
+    const rzp1 = new Razorpay(options);
+    rzp1.open();
+  }
+</script>

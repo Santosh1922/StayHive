@@ -19,6 +19,7 @@ const flash = require("connect-flash")
 const passport = require("passport")
 const localStrategy = require("passport-local")
 const User = require("./models/user")
+const Razorpay = require('razorpay');
 
 
 const listingRouter = require('./routes/listing')
@@ -35,6 +36,11 @@ app.use(methodOverride('_method'));
 app.engine('ejs', ejsMate);
 
 const dbUrl = process.env.ATLASDB_URL
+
+const razorpay = new Razorpay({
+  key_id: process.env.KEY_ID,
+  key_secret:process.env.KEY_SECRET,
+});
 
 const store = MongoStore.create({
      mongoUrl:dbUrl,
@@ -76,6 +82,23 @@ main().then(()=>{console.log("mongodb connected successfully")}).catch((err)=>{c
 async function main(){
     await mongoose.connect(dbUrl)
 }
+
+// Create order API
+app.post("/create-order", async (req, res) => {
+  try {
+    const options = {
+      amount: 500*100,  // ₹500.00 (amount in paise)
+      currency: "INR",
+      receipt: "order_rcptid_"+Date.now()
+    };
+    const order = await razorpay.orders.create(options);
+    res.json(order);
+  } catch (err) {
+    console.log(err);
+    res.status(500).send("Error creating order");
+  }
+});
+
 
 app.listen(8080, ()=>{
     console.log(`app is listening on port 8080 `)
