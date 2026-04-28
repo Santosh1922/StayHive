@@ -61,7 +61,8 @@
   </div>
 
   <!-- Pay Button -->
-   <div class="form-group mb-3">
+  <div class="form-group mb-3">
+  <p id="price-summary" style="font-weight:bold; color:#333;"></p>
   <button type="button" id="rzp-button" class="btn-pay">Pay Now</button>
   </div>
 </form>
@@ -83,18 +84,40 @@
   document.getElementById("rzp-button").onclick = async function(e){
     e.preventDefault();
 
+  const checkIn = document.getElementById("checkIn").value;
+  const checkOut = document.getElementById("checkOut").value;
+
+  if (!checkIn || !checkOut) {
+    alert("Please select dates");
+    return;
+  }
+
     // 1. Call backend to create order
-    const response = await fetch("/create-order", { method: "POST" });
-    const order = await response.json();
+const response = await fetch("/create-order", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    listingId: "<%= listing._id %>",
+    checkIn: document.getElementById("checkIn").value,
+    checkOut: document.getElementById("checkOut").value,
+    rooms: document.getElementById("rooms").value
+  })
+});
+const data = await response.json();
+
+document.getElementById("price-summary").innerText =
+`Total: ₹${data.totalAmount} (including tax)`;
 
     // 2. Razorpay options with UPI enabled
     const options = {
-    key: "rzp_test_RQ9mV3BcbaRgW2",
-    amount: order.amount,
+    key: "<%= key %>",
+    amount: data.order.amount,
     currency: "INR",
     name: "Hotel Booking",
     description: "Room Reservation Payment",
-    order_id: order.id,
+    order_id: data.order.id,
     handler: function (response){
         alert("✅ Payment successful! Payment ID: " + response.razorpay_payment_id);
         window.location.href = "/listings";

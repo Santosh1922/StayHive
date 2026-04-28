@@ -1,6 +1,6 @@
 const Listing = require("../models/listing")
 const mbxGeocoding = require('@mapbox/mapbox-sdk/services/geocoding');
-const map_token = process.env.MAP_TOKEN
+const map_token = process.env.MAPBOX_TOKEN;
 const geocodingClient = mbxGeocoding({ accessToken: map_token });
 
 module.exports.index = async (req, res) => {
@@ -43,7 +43,7 @@ module.exports.showListing = async (req, res) => {
     req.flash("error", "Listing you requested for does not exist!")
     return res.redirect("/listings")
   }
-  res.render("listings/show.ejs", { list, mapToken: process.env.MAP_TOKEN })
+  res.render("listings/show.ejs", { list, mapToken: process.env.MAPBOX_TOKEN })
 }
 
 module.exports.createListing = async (req, res) => {
@@ -110,6 +110,11 @@ module.exports.destroyListing = async (req, res) => {
 }
 
 module.exports.renderBookingForm = async (req, res) => {
-  res.render("listings/booking.ejs");
-}
+  const { id } = req.params;                     // 👈 line 1
+  const listing = await Listing.findById(id);    // 👈 line 2
 
+  res.render("listings/booking.ejs", {           // 👈 line 3
+    listing,
+    key: process.env.RAZORPAY_KEY_ID             // 👈 IMPORTANT
+  });
+};

@@ -35,11 +35,16 @@ app.use(express.json())
 app.use(methodOverride('_method'));
 app.engine('ejs', ejsMate);
 
+app.use((req, res, next) => {
+    res.locals.currUser = req.user || null;
+    next();
+});
+
 const dbUrl = process.env.ATLASDB_URL
 
 const razorpay = new Razorpay({
-  key_id: process.env.KEY_ID,
-  key_secret:process.env.KEY_SECRET,
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret:process.env.RAZORPAY_KEY_SECRET,
 });
 
 const store = MongoStore.create({
@@ -86,13 +91,39 @@ async function main(){
 // Create order API
 app.post("/create-order", async (req, res) => {
   try {
+    const { listingId, checkIn, checkOut, rooms } = req.body;
+
+    const listing = await Listing.findById(listingId);
+
+    // 🟢 Calculate nights
+    const start = new Date(checkIn);
+    const end = new Date(checkOut);
+    const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+
+    // 🟢 Base price
+    const basePrice = listing.price * nights * rooms;
+
+    // 🟢 Tax (18%)
+    const tax = basePrice * 0.18;
+
+    // 🟢 Final total
+    const totalAmount = Math.round(basePrice + tax);
+
     const options = {
-      amount: 500*100,  // ₹500.00 (amount in paise)
+      amount: totalAmount * 100,  
       currency: "INR",
-      receipt: "order_rcptid_"+Date.now()
+      receipt: "order_" + Date.now()
     };
+
     const order = await razorpay.orders.create(options);
-    res.json(order);
+
+    res.json({
+      order,
+      totalAmount,
+      nights,
+      tax
+    });
+
   } catch (err) {
     console.log(err);
     res.status(500).send("Error creating order");
